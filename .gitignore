@@ -1,0 +1,12 @@
+node_modules
+dist
+.turbo
+.env
+.env.local
+.env.production.local
+.env.development.local
+.DS_Store
+*.log
+.vite
+.cache
+build
