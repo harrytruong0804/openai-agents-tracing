@@ -1,7 +1,8 @@
 {
-  "name": "openai-tracing",
+  "name": "openai-agents-tracing",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

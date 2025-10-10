@@ -1,7 +1,8 @@
 {
-  "name": "@openai-tracing/api",
+  "name": "@openai-agents-tracing/api",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -9,10 +9,13 @@ import {
   Box,
   MessageSquare,
   Code,
+  Clock,
 } from 'lucide-react';
 import { tracesApi } from '../api';
 import type { Trace, Span } from '../types';
 import { Button } from '@/components/ui/button';
+import { codeToHtml } from 'shiki';
+import { useTheme } from '@/components/theme-provider';
 
 const HandoffIcon = () => (
   <svg
@@ -26,9 +29,41 @@ const HandoffIcon = () => (
   </svg>
 );
 
+const HighlightedJSON = ({ data, theme }: { data: any; theme: string }) => {
+  const [highlighted, setHighlighted] = useState<string>('');
+
+  useEffect(() => {
+    const highlight = async () => {
+      const jsonString = JSON.stringify(data, null, 2);
+      const html = await codeToHtml(jsonString, {
+        lang: 'json',
+        theme: theme === 'dark' ? 'github-dark' : 'github-light',
+      });
+      setHighlighted(html);
+    };
+    highlight();
+  }, [data, theme]);
+
+  if (!highlighted) {
+    return (
+      <pre className="text-xs bg-muted p-3 rounded border border-border overflow-auto">
+        {JSON.stringify(data, null, 2)}
+      </pre>
+    );
+  }
+
+  return (
+    <div
+      className="text-xs rounded border border-border overflow-auto bg-muted [&>pre]:!bg-transparent [&>pre]:!p-3 [&>pre]:!m-0 [&>pre]:!rounded [&_code]:!bg-transparent"
+      dangerouslySetInnerHTML={{ __html: highlighted }}
+    />
+  );
+};
+
 export default function TraceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [trace, setTrace] = useState<Trace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -409,7 +444,7 @@ export default function TraceDetailPage() {
   return (
     <div className="flex-1 bg-background h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b border-border bg-card/50 px-6 py-4">
+      <div className="border-b border-border bg-card/50 px-10 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 min-w-0">
             <Button
@@ -501,71 +536,79 @@ export default function TraceDetailPage() {
     return (
       <>
         {/* Properties Section */}
-        <div className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Properties</h3>
-            <button
-              onClick={() => setShowProperties(!showProperties)}
-              className="p-1 hover:bg-accent rounded transition-colors"
-            >
-              <ChevronRight
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                  showProperties ? 'rotate-90' : 'rotate-0'
-                }`}
-              />
-            </button>
-          </div>
+        <div className="space-y-3">
+          <div className="px-8 py-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Properties</h3>
+              <button
+                onClick={() => setShowProperties(!showProperties)}
+                className="p-1 hover:bg-accent rounded transition-colors"
+              >
+                <ChevronRight
+                  className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                    showProperties ? 'rotate-90' : 'rotate-0'
+                  }`}
+                />
+              </button>
+            </div>
 
-          <div
-            className={`transition-all duration-300 ${
-              showProperties
-                ? 'opacity-100'
-                : 'max-h-0 opacity-0 overflow-hidden'
-            }`}
-          >
             <div
-              className={`space-y-3 transition-transform duration-300 ${
-                showProperties ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+              className={`transition-all duration-300 ${
+                showProperties
+                  ? 'opacity-100'
+                  : 'max-h-0 opacity-0 overflow-hidden'
               }`}
             >
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-sm text-muted-foreground">ID</span>
-                <button
-                  onClick={() => copyToClipboard(trace?.id || '')}
-                  className="text-sm font-mono max-w-[240px] truncate hover:text-primary transition-colors flex items-center gap-2 group"
-                >
-                  <span className="truncate relative pb-0.5 before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[1px] before:bg-transparent group-hover:before:bg-[length:4px_1px] group-hover:before:bg-[repeating-linear-gradient(to_right,currentColor_0,currentColor_1px,transparent_1px,transparent_4px)]">
-                    {trace?.id || 'N/A'}
+              <div
+                className={`space-y-3 transition-transform duration-300 ${
+                  showProperties ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                }`}
+              >
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm text-muted-foreground">ID</span>
+                  <button
+                    onClick={() => copyToClipboard(trace?.id || '')}
+                    className="text-sm font-mono max-w-[240px] truncate hover:text-primary transition-colors flex items-center gap-2 group"
+                  >
+                    <span className="truncate relative pb-0.5 before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[1px] before:bg-transparent group-hover:before:bg-[length:4px_1px] group-hover:before:bg-[repeating-linear-gradient(to_right,currentColor_0,currentColor_1px,transparent_1px,transparent_4px)]">
+                      {trace?.id || 'N/A'}
+                    </span>
+                    <div className="relative w-3 h-3 flex-shrink-0 flex items-center justify-center">
+                      <Copy
+                        className={`w-3 h-3 absolute transition-all duration-200 ${
+                          copied
+                            ? 'opacity-0 scale-50'
+                            : 'opacity-100 scale-100'
+                        }`}
+                      />
+                      <Check
+                        className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
+                          copied
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-0 scale-50'
+                        }`}
+                      />
+                    </div>
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-start">
+                  <span className="text-sm text-muted-foreground">
+                    Workflow name
                   </span>
-                  <div className="relative w-3 h-3 flex-shrink-0 flex items-center justify-center">
-                    <Copy
-                      className={`w-3 h-3 absolute transition-all duration-200 ${
-                        copied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-                      }`}
-                    />
-                    <Check
-                      className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                        copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
-                      }`}
-                    />
-                  </div>
-                </button>
-              </div>
+                  <span className="text-sm truncate max-w-[270px]">
+                    {trace?.workflow_name || 'N/A'}
+                  </span>
+                </div>
 
-              <div className="flex justify-between items-start">
-                <span className="text-sm text-muted-foreground">
-                  Workflow name
-                </span>
-                <span className="text-sm truncate max-w-[270px]">
-                  {trace?.workflow_name || 'N/A'}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-start">
-                <span className="text-sm text-muted-foreground">Group ID</span>
-                <span className="text-sm truncate max-w-[270px]">
-                  {trace?.group_id || 'N/A'}
-                </span>
+                <div className="flex justify-between items-start">
+                  <span className="text-sm text-muted-foreground">
+                    Group ID
+                  </span>
+                  <span className="text-sm truncate max-w-[270px]">
+                    {trace?.group_id || 'N/A'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -575,53 +618,60 @@ export default function TraceDetailPage() {
         <div className="w-full h-px bg-border" />
 
         {/* Metadata Section */}
-        <div className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Metadata</h3>
-            <button
-              onClick={() => setShowMetadata(!showMetadata)}
-              className="p-1 hover:bg-accent rounded transition-colors"
-            >
-              <ChevronRight
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                  showMetadata ? 'rotate-90' : 'rotate-0'
-                }`}
-              />
-            </button>
-          </div>
+        <div className="space-y-3">
+          <div className="px-8 py-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Metadata</h3>
+              <button
+                onClick={() => setShowMetadata(!showMetadata)}
+                className="p-1 hover:bg-accent rounded transition-colors"
+              >
+                <ChevronRight
+                  className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                    showMetadata ? 'rotate-90' : 'rotate-0'
+                  }`}
+                />
+              </button>
+            </div>
 
-          <div
-            className={`transition-all duration-300 ${
-              showMetadata ? 'opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-            }`}
-          >
             <div
-              className={`transition-transform duration-300 ${
-                showMetadata ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+              className={`transition-all duration-300 ${
+                showMetadata
+                  ? 'opacity-100'
+                  : 'max-h-0 opacity-0 overflow-hidden'
               }`}
             >
-              {trace &&
-              trace.metadata &&
-              Object.keys(trace.metadata).length > 0 ? (
-                <div className="space-y-2">
-                  {Object.entries(trace.metadata).map(([key, value]) => (
-                    <div key={key} className="flex justify-between items-start">
-                      <span className="text-sm text-muted-foreground">
-                        {key}
-                      </span>
-                      <span className="text-sm max-w-[200px] truncate">
-                        {typeof value === 'object'
-                          ? JSON.stringify(value)
-                          : String(value)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  No metadata entries
-                </span>
-              )}
+              <div
+                className={`transition-transform duration-300 ${
+                  showMetadata ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                }`}
+              >
+                {trace &&
+                trace.metadata &&
+                Object.keys(trace.metadata).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(trace.metadata).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex justify-between items-start"
+                      >
+                        <span className="text-sm text-muted-foreground">
+                          {key}
+                        </span>
+                        <span className="text-sm max-w-[200px] truncate">
+                          {typeof value === 'object'
+                            ? JSON.stringify(value)
+                            : String(value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    No metadata entries
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -635,133 +685,182 @@ export default function TraceDetailPage() {
     return (
       <>
         {/* Span Header */}
-        <div className="p-4 border-b border-muted">
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-semibold text-foreground">
-              {spanType === 'handoff' ? (
-                <span className="flex items-center gap-2">
-                  Handoff
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  {span.span_data?.to_agent || 'Unknown'}
-                </span>
-              ) : spanType === 'generation' ? (
-                'Generation span'
-              ) : (
-                span.span_data?.name || spanType
-              )}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`p-1.5 rounded-md ${getIconBackgroundColor(
-                    spanType
-                  )} ${getIconTextColor(spanType)}`}
-                >
-                  {getSpanIcon(spanType)}
-                </div>
-                <span className="capitalize text-muted-foreground">
-                  {spanType}
-                </span>
-              </div>
-              <span className="text-muted-foreground">
-                {formatDuration(span)}
+        <div className="border-b border-muted">
+          <div className="px-8 py-6">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-semibold text-foreground">
+                {spanType === 'handoff' ? (
+                  <span className="flex items-center gap-2">
+                    Handoff
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    {span.span_data?.to_agent || 'Unknown'}
+                  </span>
+                ) : spanType === 'generation' ? (
+                  'Generation span'
+                ) : (
+                  span.span_data?.name || spanType
+                )}
               </span>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => copyToClipboard(span.id)}
-              className="h-6 px-2 gap-1.5"
-            >
-              <div className="relative w-3 h-3 flex items-center justify-center">
-                <Copy
-                  className={`w-3 h-3 absolute transition-all duration-200 ${
-                    copied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
-                  }`}
-                />
-                <Check
-                  className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                    copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
-                  }`}
-                />
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className={`p-1.5 rounded-md ${getIconBackgroundColor(
+                      spanType
+                    )} ${getIconTextColor(spanType)}`}
+                  >
+                    {getSpanIcon(spanType)}
+                  </div>
+                  <span className="capitalize text-muted-foreground">
+                    {spanType}
+                  </span>
+                </div>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" />
+                  {formatDuration(span)}
+                </span>
               </div>
-              <span className="text-xs font-mono max-w-[300px] truncate">
-                {span.id}
-              </span>
-            </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => copyToClipboard(span.id)}
+                className="h-6 px-2 gap-1.5"
+              >
+                <div className="relative w-3 h-3 flex items-center justify-center">
+                  <Copy
+                    className={`w-3 h-3 absolute transition-all duration-200 ${
+                      copied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
+                    }`}
+                  />
+                  <Check
+                    className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
+                      copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                    }`}
+                  />
+                </div>
+                <span className="text-xs font-mono max-w-[300px] truncate">
+                  {span.id}
+                </span>
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Properties Section */}
-        <div className="space-y-3 p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Properties</h3>
-            <button
-              onClick={() => setShowProperties(!showProperties)}
-              className="p-1 hover:bg-accent rounded transition-colors"
-            >
-              <ChevronRight
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                  showProperties ? 'rotate-90' : 'rotate-0'
-                }`}
-              />
-            </button>
-          </div>
+        <div className="space-y-3">
+          <div className="px-8 py-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Properties</h3>
+              <button
+                onClick={() => setShowProperties(!showProperties)}
+                className="p-1 hover:bg-accent rounded transition-colors"
+              >
+                <ChevronRight
+                  className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                    showProperties ? 'rotate-90' : 'rotate-0'
+                  }`}
+                />
+              </button>
+            </div>
 
-          <div
-            className={`transition-all duration-300 ${
-              showProperties
-                ? 'opacity-100'
-                : 'max-h-0 opacity-0 overflow-hidden'
-            }`}
-          >
             <div
-              className={`space-y-3 transition-transform duration-300 ${
-                showProperties ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+              className={`transition-all duration-300 ${
+                showProperties
+                  ? 'opacity-100'
+                  : 'max-h-0 opacity-0 overflow-hidden'
               }`}
             >
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Created</span>
-                <span className="text-sm">
-                  {formatTimestamp(span.started_at)}
-                </span>
-              </div>
+              <div
+                className={`space-y-3 transition-transform duration-300 ${
+                  showProperties ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Created</span>
+                  <span className="text-sm">
+                    {formatTimestamp(span.started_at)}
+                  </span>
+                </div>
 
-              {spanType === 'generation' && span.span_data?.model && (
-                <>
+                {spanType === 'generation' && span.span_data?.model && (
+                  <>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Model
+                      </span>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(span.span_data?.model || '')
+                        }
+                        className="text-sm font-mono max-w-[270px] truncate hover:text-primary transition-colors flex items-center gap-2 group"
+                      >
+                        <span className="truncate relative pb-0.5 before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[1px] before:bg-transparent group-hover:before:bg-[length:4px_1px] group-hover:before:bg-[repeating-linear-gradient(to_right,currentColor_0,currentColor_1px,transparent_1px,transparent_4px)]">
+                          {span.span_data.model}
+                        </span>
+                        <div className="relative w-3 h-3 flex-shrink-0 flex items-center justify-center">
+                          <Copy
+                            className={`w-3 h-3 absolute transition-all duration-200 ${
+                              copied
+                                ? 'opacity-0 scale-50'
+                                : 'opacity-100 scale-100'
+                            }`}
+                          />
+                          <Check
+                            className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
+                              copied
+                                ? 'opacity-100 scale-100'
+                                : 'opacity-0 scale-50'
+                            }`}
+                          />
+                        </div>
+                      </button>
+                    </div>
+                    {span.span_data?.usage && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Input tokens
+                          </span>
+                          <span className="text-sm">
+                            {span.span_data.usage.input_tokens || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Output tokens
+                          </span>
+                          <span className="text-sm">
+                            {span.span_data.usage.output_tokens || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Total tokens
+                          </span>
+                          <span className="text-sm">
+                            {(span.span_data.usage.input_tokens || 0) +
+                              (span.span_data.usage.output_tokens || 0)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {spanType === 'agent' && span.span_data?.output_type && (
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Model</span>
-                    <span className="text-sm font-mono max-w-[270px] truncate">
-                      {span.span_data.model}
+                    <span className="text-sm text-muted-foreground">
+                      Output type
+                    </span>
+                    <span className="text-sm">
+                      {span.span_data.output_type}
                     </span>
                   </div>
-                  {span.span_data?.usage && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">
-                        Tokens
-                      </span>
-                      <span className="text-sm">
-                        {(span.span_data.usage.input_tokens || 0) +
-                          (span.span_data.usage.output_tokens || 0)}{' '}
-                        total
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {spanType === 'agent' && span.span_data?.output_type && (
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Output type
-                  </span>
-                  <span className="text-sm">{span.span_data.output_type}</span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -771,41 +870,45 @@ export default function TraceDetailPage() {
           span.span_data.handoffs.length > 0 && (
             <>
               <div className="w-full h-px bg-border" />
-              <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Handoffs</h3>
-                  <button
-                    onClick={() => setShowAgents(!showAgents)}
-                    className="p-1 hover:bg-accent rounded transition-colors"
-                  >
-                    <ChevronRight
-                      className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                        showAgents ? 'rotate-90' : 'rotate-0'
-                      }`}
-                    />
-                  </button>
-                </div>
+              <div className="space-y-3">
+                <div className="px-8 py-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Handoffs</h3>
+                    <button
+                      onClick={() => setShowAgents(!showAgents)}
+                      className="p-1 hover:bg-accent rounded transition-colors"
+                    >
+                      <ChevronRight
+                        className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                          showAgents ? 'rotate-90' : 'rotate-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
 
-                <div
-                  className={`transition-all duration-300 ${
-                    showAgents
-                      ? 'opacity-100'
-                      : 'max-h-0 opacity-0 overflow-hidden'
-                  }`}
-                >
                   <div
-                    className={`transition-transform duration-300 ${
-                      showAgents ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                    className={`transition-all duration-300 ${
+                      showAgents
+                        ? 'opacity-100'
+                        : 'max-h-0 opacity-0 overflow-hidden'
                     }`}
                   >
-                    <div className="flex flex-col gap-2">
-                      {span.span_data.handoffs.map(
-                        (handoff: string, index: number) => (
-                          <div key={index} className="text-sm">
-                            {handoff}
-                          </div>
-                        )
-                      )}
+                    <div
+                      className={`transition-transform duration-300 ${
+                        showAgents
+                          ? 'translate-y-0 pt-2'
+                          : '-translate-y-2 pt-0'
+                      }`}
+                    >
+                      <div className="flex flex-col gap-2">
+                        {span.span_data.handoffs.map(
+                          (handoff: string, index: number) => (
+                            <div key={index} className="text-sm">
+                              {handoff}
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -816,41 +919,43 @@ export default function TraceDetailPage() {
         {spanType === 'generation' && span.span_data?.input && (
           <>
             <div className="w-full h-px bg-border" />
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Input</h3>
-                <button
-                  onClick={() => setShowInput(!showInput)}
-                  className="p-1 hover:bg-accent rounded transition-colors"
-                >
-                  <ChevronRight
-                    className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                      showInput ? 'rotate-90' : 'rotate-0'
-                    }`}
-                  />
-                </button>
-              </div>
+            <div className="space-y-3">
+              <div className="px-8 py-6">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-semibold">Input</h3>
+                  <button
+                    onClick={() => setShowInput(!showInput)}
+                    className="p-1 hover:bg-accent rounded transition-colors"
+                  >
+                    <ChevronRight
+                      className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                        showInput ? 'rotate-90' : 'rotate-0'
+                      }`}
+                    />
+                  </button>
+                </div>
 
-              <div
-                className={`transition-all duration-300 ${
-                  showInput
-                    ? 'opacity-100'
-                    : 'max-h-0 opacity-0 overflow-hidden'
-                }`}
-              >
                 <div
-                  className={`transition-transform duration-300 flex flex-col gap-2 ${
-                    showInput ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                  className={`transition-all duration-300 ${
+                    showInput
+                      ? 'opacity-100'
+                      : 'max-h-0 opacity-0 overflow-hidden'
                   }`}
                 >
-                  {Array.isArray(span.span_data.input) &&
-                    span.span_data.input.map((message: any, index: number) => (
-                      <div key={index}>
-                        <pre className="text-xs bg-muted p-3 rounded border border-border overflow-auto">
-                          {JSON.stringify(message, null, 2)}
-                        </pre>
-                      </div>
-                    ))}
+                  <div
+                    className={`transition-transform duration-300 flex flex-col gap-2 ${
+                      showInput ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                    }`}
+                  >
+                    {Array.isArray(span.span_data.input) &&
+                      span.span_data.input.map(
+                        (message: any, index: number) => (
+                          <div key={index}>
+                            <HighlightedJSON data={message} theme={theme} />
+                          </div>
+                        )
+                      )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -860,41 +965,43 @@ export default function TraceDetailPage() {
         {spanType === 'generation' && span.span_data?.output && (
           <>
             <div className="w-full h-px bg-border" />
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Output</h3>
-                <button
-                  onClick={() => setShowOutput(!showOutput)}
-                  className="p-1 hover:bg-accent rounded transition-colors"
-                >
-                  <ChevronRight
-                    className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                      showOutput ? 'rotate-90' : 'rotate-0'
-                    }`}
-                  />
-                </button>
-              </div>
+            <div className="space-y-3">
+              <div className="px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold mb-2">Output</h3>
+                  <button
+                    onClick={() => setShowOutput(!showOutput)}
+                    className="p-1 hover:bg-accent rounded transition-colors"
+                  >
+                    <ChevronRight
+                      className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                        showOutput ? 'rotate-90' : 'rotate-0'
+                      }`}
+                    />
+                  </button>
+                </div>
 
-              <div
-                className={`transition-all duration-300 ${
-                  showOutput
-                    ? 'opacity-100'
-                    : 'max-h-0 opacity-0 overflow-hidden'
-                }`}
-              >
                 <div
-                  className={`transition-transform duration-300 flex flex-col gap-2 ${
-                    showOutput ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                  className={`transition-all duration-300 ${
+                    showOutput
+                      ? 'opacity-100'
+                      : 'max-h-0 opacity-0 overflow-hidden'
                   }`}
                 >
-                  {Array.isArray(span.span_data.output) &&
-                    span.span_data.output.map((output: any, index: number) => (
-                      <div key={index}>
-                        <pre className="text-xs bg-muted p-3 rounded border border-border overflow-auto">
-                          {JSON.stringify(output, null, 2)}
-                        </pre>
-                      </div>
-                    ))}
+                  <div
+                    className={`transition-transform duration-300 flex flex-col gap-2 ${
+                      showOutput ? 'translate-y-0 pt-2' : '-translate-y-2 pt-0'
+                    }`}
+                  >
+                    {Array.isArray(span.span_data.output) &&
+                      span.span_data.output.map(
+                        (output: any, index: number) => (
+                          <div key={index}>
+                            <HighlightedJSON data={output} theme={theme} />
+                          </div>
+                        )
+                      )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -906,22 +1013,28 @@ export default function TraceDetailPage() {
             {span.span_data?.input && (
               <>
                 <div className="w-full h-px bg-border" />
-                <div className="space-y-3 p-4">
-                  <h3 className="text-sm font-semibold">Input</h3>
-                  <pre className="text-xs bg-muted p-3 rounded border border-border overflow-auto">
-                    {JSON.stringify(JSON.parse(span.span_data.input), null, 2)}
-                  </pre>
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <h3 className="text-sm font-semibold mb-3">Input</h3>
+                    <HighlightedJSON
+                      data={JSON.parse(span.span_data.input)}
+                      theme={theme}
+                    />
+                  </div>
                 </div>
               </>
             )}
             {span.span_data?.output && (
               <>
                 <div className="w-full h-px bg-border" />
-                <div className="space-y-3 p-4">
-                  <h3 className="text-sm font-semibold">Output</h3>
-                  <pre className="text-xs bg-muted p-3 rounded border border-border overflow-auto">
-                    {JSON.stringify(JSON.parse(span.span_data.output), null, 2)}
-                  </pre>
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <h3 className="text-sm font-semibold mb-3">Output</h3>
+                    <HighlightedJSON
+                      data={JSON.parse(span.span_data.output)}
+                      theme={theme}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -931,47 +1044,49 @@ export default function TraceDetailPage() {
         {spanType === 'handoff' && (
           <>
             <div className="w-full h-px bg-border" />
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Agents</h3>
-                <button
-                  onClick={() => setShowHandoffAgents(!showHandoffAgents)}
-                  className="p-1 hover:bg-accent rounded transition-colors"
-                >
-                  <ChevronRight
-                    className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                      showHandoffAgents ? 'rotate-90' : 'rotate-0'
-                    }`}
-                  />
-                </button>
-              </div>
+            <div className="space-y-3">
+              <div className="px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Agents</h3>
+                  <button
+                    onClick={() => setShowHandoffAgents(!showHandoffAgents)}
+                    className="p-1 hover:bg-accent rounded transition-colors"
+                  >
+                    <ChevronRight
+                      className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
+                        showHandoffAgents ? 'rotate-90' : 'rotate-0'
+                      }`}
+                    />
+                  </button>
+                </div>
 
-              <div
-                className={`transition-all duration-300 ${
-                  showHandoffAgents
-                    ? 'opacity-100'
-                    : 'max-h-0 opacity-0 overflow-hidden'
-                }`}
-              >
                 <div
-                  className={`space-y-2 transition-transform duration-300 ${
+                  className={`transition-all duration-300 ${
                     showHandoffAgents
-                      ? 'translate-y-0 pt-2'
-                      : '-translate-y-2 pt-0'
+                      ? 'opacity-100'
+                      : 'max-h-0 opacity-0 overflow-hidden'
                   }`}
                 >
-                  {span.span_data?.from_agent && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="w-3 h-3 rounded-full border-2 border-current" />
-                      {span.span_data.from_agent}
-                    </div>
-                  )}
-                  {span.span_data?.to_agent && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Check className="w-3 h-3" />
-                      {span.span_data.to_agent}
-                    </div>
-                  )}
+                  <div
+                    className={`space-y-2 transition-transform duration-300 ${
+                      showHandoffAgents
+                        ? 'translate-y-0 pt-2'
+                        : '-translate-y-2 pt-0'
+                    }`}
+                  >
+                    {span.span_data?.from_agent && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-3 h-3 rounded-full border-2 border-current" />
+                        {span.span_data.from_agent}
+                      </div>
+                    )}
+                    {span.span_data?.to_agent && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Check className="w-3 h-3" />
+                        {span.span_data.to_agent}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

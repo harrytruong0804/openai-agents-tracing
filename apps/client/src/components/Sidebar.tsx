@@ -6,6 +6,7 @@ import {
   Sun,
   Moon,
   BarChart3,
+  Settings,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     location.pathname === '/traces' || location.pathname.startsWith('/trace/');
   const isCostsActive = location.pathname === '/costs';
   const isApiKeysActive = location.pathname === '/api-keys';
+  const isSetupActive = location.pathname === '/setup';
 
   return (
     <div
@@ -90,6 +92,18 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         >
           <Key className="w-4 h-4 flex-shrink-0" />
           {!collapsed && <span>API Keys</span>}
+        </Button>
+        <Button
+          variant={isSetupActive ? 'default' : 'ghost'}
+          onClick={() => navigate('/setup')}
+          className={cn(
+            'w-full justify-start gap-3',
+            collapsed && 'justify-center px-2'
+          )}
+          title={collapsed ? 'Setup' : undefined}
+        >
+          <Settings className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>Setup</span>}
         </Button>
       </nav>
 

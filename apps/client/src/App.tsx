@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import TracesPage from './components/TracesPage';
 import TraceDetailPage from './components/TraceDetailPage';
 import ApiKeysPage from './components/ApiKeysPage';
+import SetupPage from './components/SetupPage';
 
 function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -27,6 +28,7 @@ function App() {
               <Route path="/traces" element={<TracesPage />} />
               <Route path="/trace/:id" element={<TraceDetailPage />} />
               <Route path="/api-keys" element={<ApiKeysPage />} />
+              <Route path="/setup" element={<SetupPage />} />
             </Routes>
           </div>
         </div>
