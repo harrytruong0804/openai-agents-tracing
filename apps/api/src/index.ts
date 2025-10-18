@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import authRoutes from './auth/routes';
 import tracesRoutes from './traces/routes';
 import apiKeysRoutes from './api-keys/routes';
+import analyticsRoutes from './analytics/routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.get('/health', (_, res) => {
 app.use('/auth', authRoutes);
 app.use('/traces', tracesRoutes);
 app.use('/api-keys', apiKeysRoutes);
+app.use('/analytics', analyticsRoutes);
 
 app.listen(PORT, () => {
   console.log(`API server running on http://localhost:${PORT}`);

@@ -170,3 +170,72 @@ export const apiKeysApi = {
   },
 };
 
+export interface AnalyticsOverview {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  totalRequests: number;
+  totalTraces: number;
+  totalCost: number;
+  previousPeriod: {
+    totalCost: number;
+    costChange: number;
+  };
+}
+
+export interface TimeSeriesData {
+  date: string;
+  inputTokens: number;
+  outputTokens: number;
+  requests: number;
+  traces: number;
+  cost: number;
+  gpt4: number;
+  gpt35: number;
+  claude: number;
+  gemini: number;
+  other: number;
+}
+
+export interface ModelBreakdown {
+  model: string;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+}
+
+export const analyticsApi = {
+  getOverview: async (startDate: Date, endDate: Date) => {
+    const response = await api.get<AnalyticsOverview>('/analytics/overview', {
+      params: {
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+      },
+    });
+    return response.data;
+  },
+
+  getTimeSeries: async (startDate: Date, endDate: Date, granularity: 'hour' | 'day' = 'day') => {
+    const response = await api.get<{ data: TimeSeriesData[] }>('/analytics/time-series', {
+      params: {
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        granularity,
+      },
+    });
+    return response.data;
+  },
+
+  getModels: async (startDate: Date, endDate: Date) => {
+    const response = await api.get<{ data: ModelBreakdown[]; total: ModelBreakdown }>('/analytics/models', {
+      params: {
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+      },
+    });
+    return response.data;
+  },
+};
+
