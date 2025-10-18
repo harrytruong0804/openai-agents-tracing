@@ -456,7 +456,7 @@ export default function TraceDetailPage() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <span className="text-lg font-semibold flex-shrink-0">Traces</span>
-            <span className="text-muted-foreground select-none flex-shrink-0">
+            <span className="text-lg text-muted-foreground select-none flex-shrink-0">
               /
             </span>
             <span className="text-lg font-semibold truncate">

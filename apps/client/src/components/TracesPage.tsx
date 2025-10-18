@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Tag, X, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, Tag, X, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import { tracesApi, type SearchFilters } from '../api';
 import type { Trace, TracesResponse } from '../types';
 import { Button } from '@/components/ui/button';
@@ -288,6 +288,16 @@ export default function TracesPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => loadTraces(1)}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
               <div className="px-3 py-1.5 rounded-full bg-primary/10 text-primary font-medium text-sm">
                 {pagination.total} total
               </div>

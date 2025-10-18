@@ -15,7 +15,7 @@ export default function SetupPage() {
   const [copied, setCopied] = useState(false);
 
   const typescriptCode = `const tracingExporter = new OpenAITracingExporter({
-  endpoint: '<YOUR_SERVER_URL>/events',
+  endpoint: '<YOUR_SERVER_URL>/traces/event',
 });
 const batchTraceProcessor = new BatchTraceProcessor(tracingExporter);
 setTraceProcessors([batchTraceProcessor]);`;

@@ -7,10 +7,12 @@ import {
   Moon,
   BarChart3,
   Settings,
+  LogOut,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/components/theme-provider';
+import { useAuth } from '../hooks/useAuth';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -20,6 +22,7 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const { theme, setTheme } = useTheme();
+  const { logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,6 +31,11 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const isCostsActive = location.pathname === '/costs';
   const isApiKeysActive = location.pathname === '/api-keys';
   const isSetupActive = location.pathname === '/setup';
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div
@@ -38,7 +46,7 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     >
       <div
         className={cn(
-          'border-b border-border flex items-center',
+          'flex items-center',
           collapsed ? 'p-4 justify-center' : 'p-6'
         )}
       >
@@ -107,7 +115,7 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         </Button>
       </nav>
 
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-2">
         <Button
           variant="outline"
           size="sm"
@@ -125,6 +133,16 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           {!collapsed && (
             <span>{theme === 'dark' ? 'Light' : 'Dark'} Mode</span>
           )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          className={cn('w-full justify-center gap-2', collapsed && 'px-2')}
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>Logout</span>}
         </Button>
       </div>
 
