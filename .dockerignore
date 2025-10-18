@@ -1,0 +1,13 @@
+node_modules
+.turbo
+dist
+.git
+.gitignore
+*.log
+.env*.local
+README.md
+.DS_Store
+apps/*/node_modules
+apps/*/dist
+apps/*/.turbo
+
