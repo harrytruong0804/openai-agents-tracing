@@ -6,7 +6,7 @@ services:
     container_name: openai-tracing-mongodb
     restart: unless-stopped
     ports:
-      - '27017:27017'
+      - '38017:27017'
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
       - MONGO_INITDB_ROOT_PASSWORD=tracingpass
@@ -23,7 +23,7 @@ services:
     container_name: openai-tracing-api
     restart: unless-stopped
     ports:
-      - '3001:3001'
+      - '3801:3001'
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -39,11 +39,11 @@ services:
       context: .
       dockerfile: apps/client/Dockerfile
       args:
-        - VITE_API_URL=http://localhost:3001
+        - VITE_API_URL=http://localhost:3801
     container_name: openai-tracing-client
     restart: unless-stopped
     ports:
-      - '3000:80'
+      - '3800:80'
     depends_on:
       - api
     networks:
