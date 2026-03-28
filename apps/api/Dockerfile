@@ -17,7 +17,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/package.json ./package.json
 
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 EXPOSE 3001
 

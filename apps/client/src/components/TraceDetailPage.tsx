@@ -75,7 +75,7 @@ export default function TraceDetailPage() {
   const [showOutput, setShowOutput] = useState(true);
   const [showAgents, setShowAgents] = useState(true);
   const [showHandoffAgents, setShowHandoffAgents] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayedSpan, setDisplayedSpan] = useState<string | null>(null);
 
@@ -128,10 +128,11 @@ export default function TraceDetailPage() {
     });
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, id?: string) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const key = id || text.slice(0, 20);
+    setCopiedId(key);
+    setTimeout(() => setCopiedId((prev) => (prev === key ? null : prev)), 2000);
   };
 
   const getSpanIcon = (type: string) => {
@@ -400,7 +401,7 @@ export default function TraceDetailPage() {
                 }`}
               >
                 {renderSpanTree(
-                  span.children.map((child) => ({ ...child, children: [] })),
+                  span.children as (Span & { children: Span[] })[],
                   depth + 1
                 )}
               </ul>
@@ -465,18 +466,18 @@ export default function TraceDetailPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => copyToClipboard(trace.id)}
+              onClick={() => copyToClipboard(trace.id, 'trace-id-header')}
               className="gap-3 flex-shrink-0"
             >
               <div className="relative w-3 h-3 flex items-center justify-center">
                 <Copy
                   className={`w-3 h-3 absolute transition-all duration-200 ${
-                    copied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
+                    copiedId === 'trace-id-header' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
                   }`}
                 />
                 <Check
                   className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                    copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                    copiedId === 'trace-id-header' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
                   }`}
                 />
               </div>
@@ -567,7 +568,7 @@ export default function TraceDetailPage() {
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-sm text-muted-foreground">ID</span>
                   <button
-                    onClick={() => copyToClipboard(trace?.id || '')}
+                    onClick={() => copyToClipboard(trace?.id || '', 'trace-id-prop')}
                     className="text-sm font-mono max-w-[240px] truncate hover:text-primary transition-colors flex items-center gap-2 group"
                   >
                     <span className="truncate relative pb-0.5 before:absolute before:bottom-0 before:left-0 before:right-0 before:h-[1px] before:bg-transparent group-hover:before:bg-[length:4px_1px] group-hover:before:bg-[repeating-linear-gradient(to_right,currentColor_0,currentColor_1px,transparent_1px,transparent_4px)]">
@@ -576,14 +577,14 @@ export default function TraceDetailPage() {
                     <div className="relative w-3 h-3 flex-shrink-0 flex items-center justify-center">
                       <Copy
                         className={`w-3 h-3 absolute transition-all duration-200 ${
-                          copied
+                          copiedId === 'trace-id-prop'
                             ? 'opacity-0 scale-50'
                             : 'opacity-100 scale-100'
                         }`}
                       />
                       <Check
                         className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                          copied
+                          copiedId === 'trace-id-prop'
                             ? 'opacity-100 scale-100'
                             : 'opacity-0 scale-50'
                         }`}
@@ -726,18 +727,18 @@ export default function TraceDetailPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard(span.id)}
+                onClick={() => copyToClipboard(span.id, 'span-id')}
                 className="h-6 px-2 gap-1.5"
               >
                 <div className="relative w-3 h-3 flex items-center justify-center">
                   <Copy
                     className={`w-3 h-3 absolute transition-all duration-200 ${
-                      copied ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
+                      copiedId === 'span-id' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'
                     }`}
                   />
                   <Check
                     className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                      copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+                      copiedId === 'span-id' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
                     }`}
                   />
                 </div>
@@ -793,7 +794,7 @@ export default function TraceDetailPage() {
                       </span>
                       <button
                         onClick={() =>
-                          copyToClipboard(span.span_data?.model || '')
+                          copyToClipboard(span.span_data?.model || '', 'model')
                         }
                         className="text-sm font-mono max-w-[270px] truncate hover:text-primary transition-colors flex items-center gap-2 group"
                       >
@@ -803,14 +804,14 @@ export default function TraceDetailPage() {
                         <div className="relative w-3 h-3 flex-shrink-0 flex items-center justify-center">
                           <Copy
                             className={`w-3 h-3 absolute transition-all duration-200 ${
-                              copied
+                              copiedId === 'model'
                                 ? 'opacity-0 scale-50'
                                 : 'opacity-100 scale-100'
                             }`}
                           />
                           <Check
                             className={`w-3 h-3 absolute transition-all duration-300 delay-150 ${
-                              copied
+                              copiedId === 'model'
                                 ? 'opacity-100 scale-100'
                                 : 'opacity-0 scale-50'
                             }`}
@@ -1015,9 +1016,12 @@ export default function TraceDetailPage() {
                 <div className="w-full h-px bg-border" />
                 <div className="space-y-3">
                   <div className="px-8 py-6">
-                    <h3 className="text-sm font-semibold mb-3">Input</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Input</h3>
+                      <button onClick={() => copyToClipboard(typeof span.span_data.input === 'string' ? span.span_data.input : JSON.stringify(span.span_data.input, null, 2), 'sec-input')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-input' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-input' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
                     <HighlightedJSON
-                      data={JSON.parse(span.span_data.input)}
+                      data={(() => { try { return JSON.parse(span.span_data.input); } catch { return span.span_data.input; } })()}
                       theme={theme}
                     />
                   </div>
@@ -1029,11 +1033,126 @@ export default function TraceDetailPage() {
                 <div className="w-full h-px bg-border" />
                 <div className="space-y-3">
                   <div className="px-8 py-6">
-                    <h3 className="text-sm font-semibold mb-3">Output</h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Output</h3>
+                      <button onClick={() => copyToClipboard(typeof span.span_data.output === 'string' ? span.span_data.output : JSON.stringify(span.span_data.output, null, 2), 'sec-fn-output')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-fn-output' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-fn-output' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
                     <HighlightedJSON
-                      data={JSON.parse(span.span_data.output)}
+                      data={(() => { try { return JSON.parse(span.span_data.output); } catch { return span.span_data.output; } })()}
                       theme={theme}
                     />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {spanType === 'response' && (
+          <>
+            {span.span_data?.model && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="px-8 py-4">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-muted-foreground">Model</span>
+                    <span className="font-mono">{span.span_data.model}</span>
+                    {span.span_data?.usage && (
+                      <span className="text-muted-foreground ml-auto">
+                        {span.span_data.usage.input_tokens?.toLocaleString()} in / {span.span_data.usage.output_tokens?.toLocaleString()} out
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+            {span.span_data?.reasoning && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Reasoning</h3>
+                      <button onClick={() => copyToClipboard(span.span_data.reasoning, 'sec-reasoning')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-reasoning' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-reasoning' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
+                    <pre className="text-sm whitespace-pre-wrap text-muted-foreground bg-muted/50 rounded-lg p-4 max-h-96 overflow-auto">{span.span_data.reasoning}</pre>
+                  </div>
+                </div>
+              </>
+            )}
+            {span.span_data?.output && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Output</h3>
+                      <button onClick={() => copyToClipboard(span.span_data.output, 'sec-output')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-output' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-output' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
+                    <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-4 max-h-96 overflow-auto">{span.span_data.output}</pre>
+                  </div>
+                </div>
+              </>
+            )}
+            {span.span_data?.tool_calls && span.span_data.tool_calls.length > 0 && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Tool Calls</h3>
+                      <button onClick={() => copyToClipboard(JSON.stringify(span.span_data.tool_calls, null, 2), 'sec-toolcalls')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-toolcalls' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-toolcalls' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
+                    <HighlightedJSON data={span.span_data.tool_calls} theme={theme} />
+                  </div>
+                </div>
+              </>
+            )}
+            {span.span_data?.input && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Input</h3>
+                      <button onClick={() => copyToClipboard(typeof span.span_data.input === 'string' ? span.span_data.input : JSON.stringify(span.span_data.input, null, 2), 'sec-input')} className="p-1 hover:bg-accent rounded transition-colors" title="Copy"><div className="relative w-3.5 h-3.5"><Copy className={`w-3.5 h-3.5 absolute transition-all duration-200 text-muted-foreground ${copiedId === 'sec-input' ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`} /><Check className={`w-3.5 h-3.5 absolute transition-all duration-300 delay-150 text-muted-foreground ${copiedId === 'sec-input' ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`} /></div></button>
+                    </div>
+                    {typeof span.span_data.input === 'string' ? (
+                      <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-4 max-h-96 overflow-auto">{span.span_data.input}</pre>
+                    ) : (
+                      <HighlightedJSON data={span.span_data.input} theme={theme} />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {spanType === 'mcp_tools' && (
+          <>
+            {span.span_data?.server && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="px-8 py-4">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Server</span>
+                    <span className="font-mono ml-3">{span.span_data.server}</span>
+                  </div>
+                </div>
+              </>
+            )}
+            {span.span_data?.result && (
+              <>
+                <div className="w-full h-px bg-border" />
+                <div className="space-y-3">
+                  <div className="px-8 py-6">
+                    <h3 className="text-sm font-semibold mb-3">Tools ({span.span_data.result.length})</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {span.span_data.result.map((tool: string, i: number) => (
+                        <span key={i} className="text-xs font-mono px-2 py-1 rounded bg-muted">{tool}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </>
