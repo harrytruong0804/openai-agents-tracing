@@ -265,6 +265,67 @@ router.get('/', authenticateJwt(), async (req: Request, res: Response) => {
               },
             },
           },
+          ttft: {
+            $let: {
+              vars: {
+                sortedSpans: {
+                  $sortArray: {
+                    input: '$spans',
+                    sortBy: { started_at: 1 },
+                  },
+                },
+                responseSpans: {
+                  $filter: {
+                    input: '$spans',
+                    as: 'span',
+                    cond: {
+                      $eq: [
+                        { $ifNull: ['$$span.span_data.type', null] },
+                        'response',
+                      ],
+                    },
+                  },
+                },
+              },
+              in: {
+                $let: {
+                  vars: {
+                    firstStart: {
+                      $arrayElemAt: ['$$sortedSpans.started_at', 0],
+                    },
+                    lastResponse: {
+                      $arrayElemAt: [
+                        {
+                          $sortArray: {
+                            input: '$$responseSpans',
+                            sortBy: { started_at: -1 },
+                          },
+                        },
+                        0,
+                      ],
+                    },
+                  },
+                  in: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          { $ne: ['$$lastResponse', null] },
+                          { $ne: ['$$firstStart', null] },
+                        ],
+                      },
+                      then: {
+                        $subtract: [
+                          { $toLong: '$$lastResponse.started_at' },
+                          { $toLong: '$$firstStart' },
+                        ],
+                      },
+                      else: 'N/A',
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       {

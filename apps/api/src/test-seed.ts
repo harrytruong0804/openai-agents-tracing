@@ -97,9 +97,22 @@ async function seed() {
           
           if (spanData.type === 'generation' || Math.random() > 0.5) {
             spanData.type = 'generation';
+            const inputTokens = Math.floor(Math.random() * 1000) + 100;
+            const outputTokens = Math.floor(Math.random() * 500) + 50;
+            const hasCachedTokens = Math.random() > 0.4;
+            const cachedTokens = hasCachedTokens ? Math.floor(inputTokens * (Math.random() * 0.8 + 0.1)) : 0;
+            const isReasoningModel = Math.random() > 0.7;
+            const reasoningTokens = isReasoningModel ? Math.floor(outputTokens * (Math.random() * 0.6 + 0.2)) : 0;
+
             spanData.usage = {
-              input_tokens: Math.floor(Math.random() * 1000) + 100,
-              output_tokens: Math.floor(Math.random() * 500) + 50,
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              ...(cachedTokens > 0 && {
+                input_tokens_details: { cached_tokens: cachedTokens },
+              }),
+              ...(reasoningTokens > 0 && {
+                output_tokens_details: { reasoning_tokens: reasoningTokens },
+              }),
             };
             
             const models = [

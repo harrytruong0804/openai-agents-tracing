@@ -76,6 +76,8 @@ export default function TraceDetailPage() {
   const [showAgents, setShowAgents] = useState(true);
   const [showHandoffAgents, setShowHandoffAgents] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [hiddenSpanTypes, setHiddenSpanTypes] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; spanName: string; spanType: string } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayedSpan, setDisplayedSpan] = useState<string | null>(null);
 
@@ -195,11 +197,13 @@ export default function TraceDetailPage() {
     }
   };
 
+  const getSpanDurationMs = (span: Span): number => {
+    if (!span.started_at || !span.ended_at) return 0;
+    return new Date(span.ended_at).getTime() - new Date(span.started_at).getTime();
+  };
+
   const formatDuration = (span: Span): string => {
-    if (!span.started_at || !span.ended_at) return '0 ms';
-    const duration =
-      new Date(span.ended_at).getTime() - new Date(span.started_at).getTime();
-    return `${duration.toLocaleString()} ms`;
+    return `${getSpanDurationMs(span).toLocaleString()} ms`;
   };
 
   const formatTimestamp = (dateStr: string | null): string => {
@@ -293,7 +297,11 @@ export default function TraceDetailPage() {
     spans: (Span & { children: Span[] })[],
     depth = 0
   ) => {
-    return spans.map((span) => {
+    return spans.filter((span) => {
+      if (hiddenSpanTypes.size === 0) return true;
+      const name = span.span_data?.name || span.span_data?.type || '';
+      return !hiddenSpanTypes.has(name);
+    }).map((span) => {
       const isExpanded = expandedSpans.has(span.id);
       const hasChildren = span.children && span.children.length > 0;
       const spanType = span.span_data?.type || 'unknown';
@@ -333,6 +341,13 @@ export default function TraceDetailPage() {
             onClick={() =>
               setSelectedSpan(selectedSpan === span.id ? null : span.id)
             }
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const name = span.span_data?.name || span.span_data?.type || '';
+              if (name) {
+                setContextMenu({ x: e.clientX, y: e.clientY, spanName: name, spanType: spanType });
+              }
+            }}
           >
             {hasChildren && (
               <button
@@ -487,6 +502,16 @@ export default function TraceDetailPage() {
             </Button>
           </div>
 
+          {hiddenSpanTypes.size > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setHiddenSpanTypes(new Set())}
+              className="gap-1.5 text-muted-foreground"
+            >
+              Show all ({hiddenSpanTypes.size} hidden)
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -530,6 +555,45 @@ export default function TraceDetailPage() {
           </div>
         </div>
       </div>
+      {/* Context Menu */}
+      {contextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          />
+          <div
+            className="fixed z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[200px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+              onClick={() => {
+                setHiddenSpanTypes((prev) => {
+                  const next = new Set(prev);
+                  next.add(contextMenu.spanName);
+                  return next;
+                });
+                setContextMenu(null);
+              }}
+            >
+              Hide all <span className="font-mono text-muted-foreground">{contextMenu.spanName}</span>
+            </button>
+            {hiddenSpanTypes.size > 0 && (
+              <button
+                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors border-t border-border"
+                onClick={() => {
+                  setHiddenSpanTypes(new Set());
+                  setContextMenu(null);
+                }}
+              >
+                Show all hidden ({hiddenSpanTypes.size})
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -676,6 +740,132 @@ export default function TraceDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Separator */}
+        <div className="w-full h-px bg-border" />
+
+        {/* Token Usage Summary Section */}
+        {trace?.spans && (() => {
+          const generationSpans = trace.spans.filter(
+            (s) => s.span_data?.type === 'generation' && s.span_data?.usage
+          );
+          if (generationSpans.length === 0) return null;
+
+          const totals = generationSpans.reduce(
+            (acc, s) => {
+              const u = s.span_data.usage;
+              acc.input += u.input_tokens || 0;
+              acc.output += u.output_tokens || 0;
+              acc.cached += u.input_tokens_details?.cached_tokens || 0;
+              acc.reasoning += u.output_tokens_details?.reasoning_tokens || 0;
+              return acc;
+            },
+            { input: 0, output: 0, cached: 0, reasoning: 0 }
+          );
+          const total = totals.input + totals.output;
+
+          return (
+            <div className="space-y-3">
+              <div className="px-8 py-6">
+                <h3 className="text-sm font-semibold mb-3">Token Usage</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Input tokens</span>
+                    <span className="text-sm">{totals.input.toLocaleString()}</span>
+                  </div>
+                  {totals.cached > 0 && (
+                    <div className="flex justify-between items-center pl-3">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        Cached
+                      </span>
+                      <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">
+                        {totals.cached.toLocaleString()}
+                        <span className="text-muted-foreground font-normal ml-1">
+                          ({Math.round((totals.cached / totals.input) * 100)}%)
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Output tokens</span>
+                    <span className="text-sm">{totals.output.toLocaleString()}</span>
+                  </div>
+                  {totals.reasoning > 0 && (
+                    <div className="flex justify-between items-center pl-3">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        Reasoning
+                      </span>
+                      <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">
+                        {totals.reasoning.toLocaleString()}
+                        <span className="text-muted-foreground font-normal ml-1">
+                          ({Math.round((totals.reasoning / totals.output) * 100)}%)
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-border/50">
+                    <span className="text-sm text-muted-foreground">Total tokens</span>
+                    <span className="text-sm font-medium">{total.toLocaleString()}</span>
+                  </div>
+
+                  {/* Visual breakdown bar */}
+                  <div className="pt-2">
+                    <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                      {totals.cached > 0 && (
+                        <div
+                          className="h-full bg-blue-400"
+                          style={{ width: `${(totals.cached / total) * 100}%` }}
+                          title={`Cached: ${totals.cached.toLocaleString()}`}
+                        />
+                      )}
+                      <div
+                        className="h-full bg-emerald-500"
+                        style={{ width: `${((totals.input - totals.cached) / total) * 100}%` }}
+                        title={`Input (non-cached): ${(totals.input - totals.cached).toLocaleString()}`}
+                      />
+                      {totals.reasoning > 0 && (
+                        <div
+                          className="h-full bg-amber-400"
+                          style={{ width: `${(totals.reasoning / total) * 100}%` }}
+                          title={`Reasoning: ${totals.reasoning.toLocaleString()}`}
+                        />
+                      )}
+                      <div
+                        className="h-full bg-violet-500"
+                        style={{ width: `${((totals.output - totals.reasoning) / total) * 100}%` }}
+                        title={`Output: ${(totals.output - totals.reasoning).toLocaleString()}`}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                      {totals.cached > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-400" />
+                          Cached
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        Input
+                      </span>
+                      {totals.reasoning > 0 && (
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-amber-400" />
+                          Reasoning
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-violet-500" />
+                        Output
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </>
     );
   }
@@ -819,35 +1009,71 @@ export default function TraceDetailPage() {
                         </div>
                       </button>
                     </div>
-                    {span.span_data?.usage && (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">
-                            Input tokens
-                          </span>
-                          <span className="text-sm">
-                            {span.span_data.usage.input_tokens || 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">
-                            Output tokens
-                          </span>
-                          <span className="text-sm">
-                            {span.span_data.usage.output_tokens || 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">
-                            Total tokens
-                          </span>
-                          <span className="text-sm">
-                            {(span.span_data.usage.input_tokens || 0) +
-                              (span.span_data.usage.output_tokens || 0)}
-                          </span>
-                        </div>
-                      </>
-                    )}
+                    {span.span_data?.usage && (() => {
+                      const usage = span.span_data.usage;
+                      const inputTokens = usage.input_tokens || 0;
+                      const outputTokens = usage.output_tokens || 0;
+                      const cachedTokens = usage.input_tokens_details?.cached_tokens || 0;
+                      const reasoningTokens = usage.output_tokens_details?.reasoning_tokens || 0;
+                      const totalTokens = inputTokens + outputTokens;
+
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">
+                              Input tokens
+                            </span>
+                            <span className="text-sm">
+                              {inputTokens.toLocaleString()}
+                            </span>
+                          </div>
+                          {cachedTokens > 0 && (
+                            <div className="flex justify-between items-center pl-3">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                Cached
+                              </span>
+                              <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">
+                                {cachedTokens.toLocaleString()}
+                                <span className="text-muted-foreground font-normal ml-1">
+                                  ({Math.round((cachedTokens / inputTokens) * 100)}%)
+                                </span>
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">
+                              Output tokens
+                            </span>
+                            <span className="text-sm">
+                              {outputTokens.toLocaleString()}
+                            </span>
+                          </div>
+                          {reasoningTokens > 0 && (
+                            <div className="flex justify-between items-center pl-3">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                                Reasoning
+                              </span>
+                              <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">
+                                {reasoningTokens.toLocaleString()}
+                                <span className="text-muted-foreground font-normal ml-1">
+                                  ({Math.round((reasoningTokens / outputTokens) * 100)}%)
+                                </span>
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-1 border-t border-border/50">
+                            <span className="text-sm text-muted-foreground">
+                              Total tokens
+                            </span>
+                            <span className="text-sm font-medium">
+                              {totalTokens.toLocaleString()}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
 
@@ -861,6 +1087,72 @@ export default function TraceDetailPage() {
                     </span>
                   </div>
                 )}
+
+                {spanType === 'agent' && span.span_data?.usage && (() => {
+                  const usage = span.span_data.usage;
+                  const inputTokens = usage.input_tokens || 0;
+                  const outputTokens = usage.output_tokens || 0;
+                  const cachedTokens = usage.input_tokens_details?.cached_tokens || 0;
+                  const reasoningTokens = usage.output_tokens_details?.reasoning_tokens || 0;
+                  const totalTokens = inputTokens + outputTokens;
+
+                  return (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Input tokens
+                        </span>
+                        <span className="text-sm">
+                          {inputTokens.toLocaleString()}
+                        </span>
+                      </div>
+                      {cachedTokens > 0 && (
+                        <div className="flex justify-between items-center pl-3">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            Cached
+                          </span>
+                          <span className="text-xs text-blue-500 dark:text-blue-400 font-medium">
+                            {cachedTokens.toLocaleString()}
+                            <span className="text-muted-foreground font-normal ml-1">
+                              ({Math.round((cachedTokens / inputTokens) * 100)}%)
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">
+                          Output tokens
+                        </span>
+                        <span className="text-sm">
+                          {outputTokens.toLocaleString()}
+                        </span>
+                      </div>
+                      {reasoningTokens > 0 && (
+                        <div className="flex justify-between items-center pl-3">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            Reasoning
+                          </span>
+                          <span className="text-xs text-amber-500 dark:text-amber-400 font-medium">
+                            {reasoningTokens.toLocaleString()}
+                            <span className="text-muted-foreground font-normal ml-1">
+                              ({Math.round((reasoningTokens / outputTokens) * 100)}%)
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center pt-1 border-t border-border/50">
+                        <span className="text-sm text-muted-foreground">
+                          Total tokens
+                        </span>
+                        <span className="text-sm font-medium">
+                          {totalTokens.toLocaleString()}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1057,11 +1349,22 @@ export default function TraceDetailPage() {
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground">Model</span>
                     <span className="font-mono">{span.span_data.model}</span>
-                    {span.span_data?.usage && (
-                      <span className="text-muted-foreground ml-auto">
-                        {span.span_data.usage.input_tokens?.toLocaleString()} in / {span.span_data.usage.output_tokens?.toLocaleString()} out
-                      </span>
-                    )}
+                    {span.span_data?.usage && (() => {
+                      const usage = span.span_data.usage;
+                      const cached = usage.input_tokens_details?.cached_tokens || 0;
+                      return (
+                        <span className="text-muted-foreground ml-auto flex items-center gap-1.5">
+                          {usage.input_tokens?.toLocaleString()} in
+                          {cached > 0 && (
+                            <span className="text-blue-500 dark:text-blue-400 text-xs">
+                              ({cached.toLocaleString()} cached)
+                            </span>
+                          )}
+                          {' / '}
+                          {usage.output_tokens?.toLocaleString()} out
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </>

@@ -17,6 +17,7 @@ services:
       - tracing-network
 
   api:
+    image: noitq/oat-api:${OAT_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -35,6 +36,7 @@ services:
       - tracing-network
 
   client:
+    image: noitq/oat-client:${OAT_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/client/Dockerfile
