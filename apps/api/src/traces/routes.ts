@@ -163,6 +163,52 @@ router.get('/', authenticateJwt(), async (req: Request, res: Response) => {
       },
       {
         $addFields: {
+          input_preview: {
+            $let: {
+              vars: {
+                firstResponse: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: {
+                          $sortArray: {
+                            input: '$spans',
+                            sortBy: { started_at: 1 },
+                          },
+                        },
+                        as: 'span',
+                        cond: {
+                          $eq: [
+                            { $ifNull: ['$$span.span_data.type', null] },
+                            'response',
+                          ],
+                        },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $ne: ['$$firstResponse', null] },
+                      { $ne: [{ $ifNull: ['$$firstResponse.span_data.input.content', null] }, null] },
+                    ],
+                  },
+                  then: {
+                    $substrCP: [
+                      '$$firstResponse.span_data.input.content',
+                      0,
+                      120,
+                    ],
+                  },
+                  else: null,
+                },
+              },
+            },
+          },
           flow: {
             $map: {
               input: {

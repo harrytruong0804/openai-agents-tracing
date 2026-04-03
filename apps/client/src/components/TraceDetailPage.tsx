@@ -76,7 +76,21 @@ export default function TraceDetailPage() {
   const [showAgents, setShowAgents] = useState(true);
   const [showHandoffAgents, setShowHandoffAgents] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [hiddenSpanTypes, setHiddenSpanTypes] = useState<Set<string>>(new Set());
+  const [hiddenSpanTypes, setHiddenSpanTypes] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('oat_hidden_span_types');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const updateHiddenSpanTypes = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setHiddenSpanTypes((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      localStorage.setItem('oat_hidden_span_types', JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; spanName: string; spanType: string } | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayedSpan, setDisplayedSpan] = useState<string | null>(null);
@@ -506,7 +520,7 @@ export default function TraceDetailPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setHiddenSpanTypes(new Set())}
+              onClick={() => updateHiddenSpanTypes(new Set())}
               className="gap-1.5 text-muted-foreground"
             >
               Show all ({hiddenSpanTypes.size} hidden)
@@ -570,7 +584,7 @@ export default function TraceDetailPage() {
             <button
               className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
               onClick={() => {
-                setHiddenSpanTypes((prev) => {
+                updateHiddenSpanTypes((prev) => {
                   const next = new Set(prev);
                   next.add(contextMenu.spanName);
                   return next;
@@ -584,7 +598,7 @@ export default function TraceDetailPage() {
               <button
                 className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors border-t border-border"
                 onClick={() => {
-                  setHiddenSpanTypes(new Set());
+                  updateHiddenSpanTypes(new Set());
                   setContextMenu(null);
                 }}
               >

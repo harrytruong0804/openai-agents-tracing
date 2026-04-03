@@ -23,6 +23,7 @@ export interface Trace {
   spans?: Span[];
   createdAt?: string;
   updatedAt?: string;
+  input_preview?: string | null;
   flow?: string[];
   handoffs_count?: number;
   tools_count?: number;

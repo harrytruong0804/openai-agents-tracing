@@ -486,6 +486,7 @@ export default function TracesPage() {
                 Workflow
               </TableHead>
               <TableHead className="font-semibold">Flow</TableHead>
+              <TableHead className="font-semibold">Input</TableHead>
               <TableHead
                 className="text-center font-semibold"
                 style={{ width: '90px' }}
@@ -516,7 +517,7 @@ export default function TracesPage() {
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center text-muted-foreground py-8"
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -528,7 +529,7 @@ export default function TracesPage() {
             ) : traces.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center text-muted-foreground py-8"
                 >
                   No traces found
@@ -565,6 +566,15 @@ export default function TracesPage() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell className="py-2 px-6 max-w-xs">
+                    {trace.input_preview ? (
+                      <span className="text-xs text-muted-foreground truncate block" title={trace.input_preview}>
+                        {trace.input_preview}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/50">—</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center py-2 px-6">
                     <span className="text-foreground text-xs font-medium">
                       {trace.handoffs_count ?? 0}
@@ -589,7 +599,7 @@ export default function TracesPage() {
             {loadingMore && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center text-muted-foreground py-4"
                 >
                   <div className="flex items-center justify-center gap-2">
