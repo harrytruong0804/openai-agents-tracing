@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { validateZod } from '../validate.middleware';
 import { authenticateApiKey } from '../api-key.middleware';
 import { authenticateJwt } from '../auth.middleware';
+import { authenticateEither } from '../auth-either.middleware';
 import {
   BodySchema,
   SearchQuerySchema,
@@ -77,7 +78,7 @@ router.post(
   }
 );
 
-router.get('/', authenticateJwt(), async (req: Request, res: Response) => {
+router.get('/', authenticateEither(), async (req: Request, res: Response) => {
   const queryWithMetadata = { ...req.query };
   const metadataParams: Record<string, string> = {};
 
@@ -406,7 +407,7 @@ router.get('/', authenticateJwt(), async (req: Request, res: Response) => {
 
 router.get(
   '/:id',
-  authenticateJwt(),
+  authenticateEither(),
   validateZod(IdSchema, 'params'),
   async (req: Request, res: Response) => {
     try {
